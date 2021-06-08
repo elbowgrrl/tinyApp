@@ -48,6 +48,14 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls")
 });
 
+app.post("/urls/:shortURL", (req, res) => {
+  console.log(req.params);
+  console.log("post/urls:id")
+  const shortURL = req.params.shortURL;
+// res.redirect(`/urls/${shortURL}`)
+res.redirect(`/urls/${shortURL}`)
+});
+
 app.get("/urls/:shortURL", (req, res) => {
   // console.log("params", req.params);
   // console.log("body", req.body);
