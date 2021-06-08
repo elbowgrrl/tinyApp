@@ -32,7 +32,7 @@ app.post("/urls", (req, res) => {
   // console.log("new short url", shortURL);
   urlDatabase [shortURL] = req.body.longURL;
   // console.log("urlDatabase", urlDatabase);
-  res.redirect(`/urls/${shortURL}`);
+  res.redirect("/urls");
 });
 
 app.get("/urls/new", (req, res) => {
@@ -45,15 +45,15 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   // console.log(urlDatabase);
   delete urlDatabase[shortURL];
   // console.log("post")
-  res.redirect("/urls")
+  res.redirect("/urls") 
 });
 
+//Edits/ Updates an existing short URL
 app.post("/urls/:shortURL", (req, res) => {
-  console.log(req.params);
-  console.log("post/urls:id")
   const shortURL = req.params.shortURL;
-// res.redirect(`/urls/${shortURL}`)
-res.redirect(`/urls/${shortURL}`)
+  const url = req.body.longURL;
+  urlDatabase[shortURL] = url;
+res.redirect("/urls") // redirect to main
 });
 
 app.get("/urls/:shortURL", (req, res) => {
