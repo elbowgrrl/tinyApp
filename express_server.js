@@ -5,6 +5,9 @@ const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
+const morgan = require("morgan");
+app.use(morgan('dev'))
+
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
@@ -15,9 +18,34 @@ let urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = { 
+  "userRandomID": {
+    id: "userRandomID", 
+    email: "user@example.com", 
+    password: "purple-monkey-dinosaur"
+  },
+ "user2RandomID": {
+    id: "user2RandomID", 
+    email: "user2@example.com", 
+    password: "dishwasher-funk"
+  }
+}
+
+
 //Generate random string
 const generateRandomString = function (length = 6) {
   return Math.random().toString(20).substr(2, length);
+};
+
+//Get user by email
+
+const getUserByemail = function(email) {
+  for (const user in users) {
+    if (users[user].email === email) {
+      return users[user];
+    }
+  }
+  return null;
 };
 
 app.post("/urls/login", (req, res) => {
@@ -25,20 +53,40 @@ app.post("/urls/login", (req, res) => {
   // console.log("username", username)
   const userCookie = req.cookies;
   res.cookie("username", username)
-  console.log("login")
   // console.log("userCookie", userCookie);
 res.redirect("/urls")
 });
 
 app.post("/urls/logout", (req, res) => {
 res.clearCookie("username");
-console.log("logout")
 res.redirect("/urls")
 });
 
 app.get("/urls/new", (req, res) => {
   console.log("get urls/new")
-  res.render("urls_new");
+  let shortURL = req.params.shortURL;
+  const templateVars = { shortURL, longURL: urlDatabase[shortURL], username: req.cookies["username"] };
+  res.render("urls_new", templateVars);
+});
+
+app.get("/register", (req, res) => {
+  const username = req.body.Username;
+  let shortURL = req.params.shortURL;
+  const templateVars = { shortURL, longURL: urlDatabase[shortURL], username: req.cookies["username"] };
+  res.render("register", templateVars)
+});
+
+app.post("/register", (req, res) => {
+const email = req.body.email;
+const password = req.body.password;
+const id = generateRandomString();
+console.log("email", email);
+console.log("password", password);
+console.log("id", id);
+const user = { id, email, password };
+users[id] = user;
+console.log(users);
+res.redirect("/urls")
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -46,7 +94,6 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURL = req.params.shortURL;
   // console.log(urlDatabase);
   delete urlDatabase[shortURL];
-  console.log("post short delete")
   res.redirect("/urls") 
 });
 
@@ -55,7 +102,6 @@ app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const url = req.body.longURL;
   urlDatabase[shortURL] = url;
-  console.log("post, update")
 res.redirect("/urls") // redirect to main
 });
 
@@ -64,7 +110,6 @@ app.get("/urls/:shortURL", (req, res) => {
   // console.log("body", req.body);
   // console.log("data", urlDatabase)
   let shortURL = req.params.shortURL;
-  console.log("get shortUrls")
   const templateVars = { shortURL, longURL: urlDatabase[shortURL], username: req.cookies["username"] };
   res.render("urls_show", templateVars);
 });
