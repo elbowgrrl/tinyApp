@@ -2,8 +2,9 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 
-const bodyParser = require("body-parser");
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.urlencoded({
+  extended: true
+}));
 
 const morgan = require("morgan");
 app.use(morgan("dev"));
@@ -102,7 +103,15 @@ app.get("/urls/new", (req, res) => {
     res.status(403).redirect("/login");
     return;
   }
-
+  //refactor to allow new urls object//this code may be helpful
+  // console.log("short", req.params.shortURL);
+  // console.log("url", req.body.longURL);
+  // console.log("id", users[req.cookies["user_id"]].id)
+  // console.log("userURL", userURL);
+  // const shortURL = req.params.shortURL;
+  // const url = req.body.longURL;
+  // const userURL = {longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id}
+  // urlDatabase[shortURL] = userURL;
   res.render("urls_new", templateVars);
 });
 
@@ -170,9 +179,14 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //Edits/ Updates an existing short URL
 app.post("/urls/:shortURL", (req, res) => {
+  // console.log("short", req.params.shortURL);
+  // console.log("url", req.body.longURL);
+  // console.log("id", users[req.cookies["user_id"]].id)
+  // console.log("userURL", userURL);
   const shortURL = req.params.shortURL;
   const url = req.body.longURL;
-  urlDatabase[shortURL].longURL = url;
+  const userURL = {longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id}
+  urlDatabase[shortURL] = userURL;
   res.redirect("/urls"); // redirect to main
 });
 
@@ -180,10 +194,19 @@ app.get("/urls/:shortURL", (req, res) => {
   // console.log("params", req.params);
   // console.log("body", req.body);
   // console.log("data", urlDatabase)
+
+  const hasCookie = users[req.cookies["user_id"]]
+  if (!hasCookie) {
+    res.status(403).send("Please log in");
+    return;
+  }
+
+  urls = urlsForUser(users[req.cookies["user_id"]].id)
+
   let shortURL = req.params.shortURL;
   const templateVars = {
     shortURL,
-    longURL: urlDatabase[shortURL].longURL,
+    longURL: urls[shortURL].longURL,
     username: users[req.cookies["user_id"]],
   };
   res.render("urls_show", templateVars);
