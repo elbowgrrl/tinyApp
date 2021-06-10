@@ -103,16 +103,18 @@ app.get("/urls/new", (req, res) => {
     res.status(403).redirect("/login");
     return;
   }
-  //refactor to allow new urls object//this code may be helpful
-  // console.log("short", req.params.shortURL);
+  res.render("urls_new", templateVars);
+});
+
+app.post("/urls/new", (req, res) => {
   // console.log("url", req.body.longURL);
   // console.log("id", users[req.cookies["user_id"]].id)
-  // console.log("userURL", userURL);
-  // const shortURL = req.params.shortURL;
-  // const url = req.body.longURL;
-  // const userURL = {longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id}
-  // urlDatabase[shortURL] = userURL;
-  res.render("urls_new", templateVars);
+  
+  const shortURL = generateRandomString();
+  const url = req.body.longURL;
+  const userURL = {longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id}
+  urlDatabase[shortURL] = userURL;
+  res.redirect("/urls");
 });
 
 app.get("/register", (req, res) => {
@@ -238,15 +240,6 @@ app.get("/urls", (req, res) => {
     username: users[req.cookies["user_id"]],
   };
   res.render("index_urls", templateVars);
-});
-
-app.post("/urls", (req, res) => {
-  // console.log(req.body);
-  const shortURL = generateRandomString();
-  // console.log("new short url", shortURL);
-  urlDatabase[shortURL] = req.body.longURL;
-  // console.log("urlDatabase", urlDatabase);
-  res.redirect("/urls");
 });
 
 app.get("/hello", (req, res) => {
