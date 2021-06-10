@@ -67,7 +67,7 @@ return userURLs;
 };
 
 app.post("/login", (req, res) => {
-    // console.log("email", email);
+  // console.log("email", email);
   // console.log("password", password);
   const email = req.body.email;
   const password = req.body.password;
@@ -90,13 +90,14 @@ app.post("/urls/logout", (req, res) => {
   res.redirect("/urls");
 });
 
-//refactor variables
+
 app.get("/urls/new", (req, res) => {
   const shortURL = req.params.shortURL;
+  const userID = users[req.cookies["user_id"]];
   const templateVars = {
     shortURL,
     longURL: urlDatabase[shortURL],
-    username: users[req.cookies["user_id"]],
+    userID,
   };
   //Only allow logged in users to create new urls
   const hasCookie = users[req.cookies["user_id"]]
@@ -119,7 +120,7 @@ app.post("/urls/new", (req, res) => {
   res.redirect("/urls");
 });
 
-//refactor variables
+
 app.get("/register", (req, res) => {
   // const username = req.body.Username;
   const shortURL = req.params.shortURL;
@@ -127,7 +128,7 @@ app.get("/register", (req, res) => {
   const templateVars = {
     shortURL,
     longURL: urlDatabase[shortURL],
-    username: users[req.cookies["user_id"]],
+    userID,
   };
   res.render("register", templateVars);
 });
@@ -157,11 +158,12 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
-//refactor variables
+
 app.get("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const templateVars = { username: users[req.cookies["user_id"]] };
+  const userID = users[req.cookies["user_id"]];
+  const templateVars = { userID };
   res.render("login", templateVars);
 });
 
@@ -186,12 +188,12 @@ app.post("/urls/:shortURL", (req, res) => {
   res.redirect("/urls"); // redirect to main
 });
 
-//refactor variables
 app.get("/urls/:shortURL", (req, res) => {
+  const shortURL = req.params.shortURL;
+  const userID = users[req.cookies["user_id"]];
   // console.log("params", req.params);
   // console.log("body", req.body);
   // console.log("data", urlDatabase)
-
   const hasCookie = users[req.cookies["user_id"]]
   if (!hasCookie) {
     res.redirect("/login")
@@ -199,12 +201,10 @@ app.get("/urls/:shortURL", (req, res) => {
   }
 
   urls = urlsForUser(users[req.cookies["user_id"]].id)
-
-  let shortURL = req.params.shortURL;
   const templateVars = {
     shortURL,
     longURL: urls[shortURL].longURL,
-    username: users[req.cookies["user_id"]],
+    userID,
   };
   res.render("urls_show", templateVars);
 });
@@ -220,10 +220,8 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-
-//refactor variables
 app.get("/urls", (req, res) => {
-  
+  const userID = users[req.cookies["user_id"]];
   const hasCookie = users[req.cookies["user_id"]]
   if (!hasCookie) {
     res.redirect("/login")
@@ -234,7 +232,7 @@ app.get("/urls", (req, res) => {
   
   const templateVars = {
     urls,
-    username: users[req.cookies["user_id"]],
+    userID,
   };
   res.render("index_urls", templateVars);
 });
