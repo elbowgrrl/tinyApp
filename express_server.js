@@ -13,9 +13,10 @@ app.use(cookieParser());
 
 app.set("view engine", "ejs");
 
-let urlDatabase = {
-  b2xVn2: "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+const urlDatabase = {
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "userRandomID" },
+  i3BoGr: { longURL: "https://www.google.ca", userID: "userRandomID" },
+  g6NyFw: { longURL: "http://www.cbc.ca", userID: "userhascookie"}
 };
 
 const users = {
@@ -29,7 +30,13 @@ const users = {
     email: "user2@example.com",
     password: "dishwasher-funk",
   },
+  userhascookie: {
+    id: "userhascookie",
+    email: "a@a.com",
+    password: "1234"
+  }
 };
+
 
 //Generate random string
 const generateRandomString = function (length = 6) {
@@ -44,6 +51,18 @@ const getUserByemail = function (email) {
     }
   }
   return null;
+};
+
+//Get urls for users
+const urlsForUser = function(id) {
+  let userURLs = {};
+for (const key in urlDatabase) {
+  urlInfo = urlDatabase[key];
+  if (urlInfo.userID === id) {
+    userURLs[key] = urlInfo;
+  }
+}
+return userURLs;
 };
 
 app.post("/login", (req, res) => {
@@ -71,13 +90,19 @@ app.post("/urls/logout", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  console.log("get urls/new");
   let shortURL = req.params.shortURL;
   const templateVars = {
     shortURL,
     longURL: urlDatabase[shortURL],
     username: users[req.cookies["user_id"]],
   };
+  //Only allow logged in users to create new urls
+  const hasCookie = users[req.cookies["user_id"]]
+  if (!hasCookie) {
+    res.status(403).redirect("/login");
+    return;
+  }
+
   res.render("urls_new", templateVars);
 });
 
@@ -147,7 +172,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const url = req.body.longURL;
-  urlDatabase[shortURL] = url;
+  urlDatabase[shortURL].longURL = url;
   res.redirect("/urls"); // redirect to main
 });
 
@@ -158,7 +183,7 @@ app.get("/urls/:shortURL", (req, res) => {
   let shortURL = req.params.shortURL;
   const templateVars = {
     shortURL,
-    longURL: urlDatabase[shortURL],
+    longURL: urlDatabase[shortURL].longURL,
     username: users[req.cookies["user_id"]],
   };
   res.render("urls_show", templateVars);
@@ -166,7 +191,7 @@ app.get("/urls/:shortURL", (req, res) => {
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL];
+  const longURL = urlDatabase[shortURL].longURL;
   // console.log(req);
   res.redirect(longURL);
 });
@@ -176,8 +201,17 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
+  
+  const hasCookie = users[req.cookies["user_id"]]
+  if (!hasCookie) {
+    res.status(403).send("Please log in");
+    return;
+  }
+
+  urls = urlsForUser(users[req.cookies["user_id"]].id)
+  
   const templateVars = {
-    urls: urlDatabase,
+    urls,
     username: users[req.cookies["user_id"]],
   };
   res.render("index_urls", templateVars);
