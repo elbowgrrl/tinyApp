@@ -9,8 +9,11 @@ app.use(express.urlencoded({
 const morgan = require("morgan");
 app.use(morgan("dev"));
 
-const cookieParser = require("cookie-parser");
-app.use(cookieParser());
+const cookieSession = require("cookie-session");
+app.use(cookieSession({
+  name: 'wumplepuff',
+  keys: ["key1"],
+}))
 
 const bcrypt = require("bcrypt");
 
@@ -84,20 +87,20 @@ app.post("/login", (req, res) => {
       return res.status(403).send("Please enter valid login info");
     }
   }
-
-  res.cookie("user_id", userID.id);
+  
+  req.session.user_id = userID.id;
   res.redirect("/urls");
 });
 
 app.post("/urls/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/urls");
 });
 
 
 app.get("/urls/new", (req, res) => {
   const shortURL = req.params.shortURL;
-  const userID = users[req.cookies["user_id"]];
+  const userID = users[req.session.user_id];
   const longURL = urlDatabase[shortURL]
   const templateVars = {
     shortURL,
@@ -115,11 +118,10 @@ app.get("/urls/new", (req, res) => {
 
 app.post("/urls/new", (req, res) => {
   // console.log("url", req.body.longURL);
-  // console.log("id", users[req.cookies["user_id"]].id)
   
   const shortURL = generateRandomString();
   const url = req.body.longURL;
-  const userURL = {longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id}
+  const userURL = {longURL: req.body.longURL, userID: users[req.session.user_id].id}
   urlDatabase[shortURL] = userURL;
   res.redirect("/urls");
 });
@@ -128,7 +130,7 @@ app.post("/urls/new", (req, res) => {
 app.get("/register", (req, res) => {
   // const username = req.body.Username;
   const shortURL = req.params.shortURL;
-  const userID = users[req.cookies["user_id"]];
+  const userID = users[req.session.user_id];
   const longURL = urlDatabase[shortURL]
   const templateVars = {
     shortURL,
@@ -159,7 +161,7 @@ app.post("/register", (req, res) => {
 
   const user = { id, email, hashedPassword };
   users[id] = user;
-  res.cookie("user_id", id);
+  req.session.user_id = userID.id;
   console.log(users);
   res.redirect("/urls");
 });
@@ -168,7 +170,7 @@ app.post("/register", (req, res) => {
 app.get("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const userID = users[req.cookies["user_id"]];
+  const userID = users[req.session["user_id"]];
   const templateVars = { userID };
   res.render("login", templateVars);
 });
@@ -185,29 +187,28 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 app.post("/urls/:shortURL", (req, res) => {
   // console.log("short", req.params.shortURL);
   // console.log("url", req.body.longURL);
-  // console.log("id", users[req.cookies["user_id"]].id)
   // console.log("userURL", userURL);
   const shortURL = req.params.shortURL;
   const url = req.body.longURL;
-  const userURL = {longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id}
+  const userURL = {longURL: req.body.longURL, userID: users[req.session.user_id].id}
   urlDatabase[shortURL] = userURL;
   res.redirect("/urls"); // redirect to main
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const userID = users[req.cookies["user_id"]];
+  const userID = users[req.session.user_id];
   const longURL = urlDatabase[shortURL].longURL;
   // console.log("params", req.params);
   // console.log("body", req.body);
   // console.log("data", urlDatabase)
-  const hasCookie = users[req.cookies["user_id"]]
-  if (!hasCookie) {
+  const isLoggedIn = users[req.session.user_id]
+  if (!isLoggedIn) {
     res.redirect("/login")
     return;
   }
 
-  urls = urlsForUser(users[req.cookies["user_id"]].id)
+  urls = urlsForUser(users[req.session.user_id].id)
   const templateVars = {
     shortURL,
     longURL,
@@ -228,14 +229,14 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const userID = users[req.cookies["user_id"]];
-  const hasCookie = users[req.cookies["user_id"]]
-  if (!hasCookie) {
+  const userID = users[req.session.user_id];
+  const isLoggedIn = users[req.session.user_id];
+  if (!isLoggedIn) {
     res.redirect("/login")
     return;
   }
 
-  urls = urlsForUser(users[req.cookies["user_id"]].id)
+  urls = urlsForUser(users[req.session.user_id].id)
   
   const templateVars = {
     urls,
