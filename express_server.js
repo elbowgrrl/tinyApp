@@ -122,7 +122,8 @@ app.post("/urls/new", (req, res) => {
 //refactor variables
 app.get("/register", (req, res) => {
   // const username = req.body.Username;
-  let shortURL = req.params.shortURL;
+  const shortURL = req.params.shortURL;
+  const userID = users[req.cookies["user_id"]];
   const templateVars = {
     shortURL,
     longURL: urlDatabase[shortURL],
