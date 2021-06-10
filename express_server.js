@@ -67,10 +67,10 @@ return userURLs;
 };
 
 app.post("/login", (req, res) => {
+    // console.log("email", email);
+  // console.log("password", password);
   const email = req.body.email;
   const password = req.body.password;
-  console.log("email", email);
-  console.log("password", password);
   userID = getUserByemail(email);
 
   if (!userID) {
@@ -90,8 +90,9 @@ app.post("/urls/logout", (req, res) => {
   res.redirect("/urls");
 });
 
+//refactor variables
 app.get("/urls/new", (req, res) => {
-  let shortURL = req.params.shortURL;
+  const shortURL = req.params.shortURL;
   const templateVars = {
     shortURL,
     longURL: urlDatabase[shortURL],
@@ -106,6 +107,7 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
+
 app.post("/urls/new", (req, res) => {
   // console.log("url", req.body.longURL);
   // console.log("id", users[req.cookies["user_id"]].id)
@@ -117,8 +119,9 @@ app.post("/urls/new", (req, res) => {
   res.redirect("/urls");
 });
 
+//refactor variables
 app.get("/register", (req, res) => {
-  const username = req.body.Username;
+  // const username = req.body.Username;
   let shortURL = req.params.shortURL;
   const templateVars = {
     shortURL,
@@ -129,12 +132,12 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
+  // console.log("email", email);
+  // console.log("password", password);
+  // console.log("id", id);
   const email = req.body.email;
   const password = req.body.password;
   const id = generateRandomString();
-  console.log("email", email);
-  console.log("password", password);
-  console.log("id", id);
 
   if (!email || !password) {
     res.status(400).send("Must enter an email and password");
@@ -153,22 +156,12 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
+//refactor variables
 app.get("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const templateVars = { username: users[req.cookies["user_id"]] };
   res.render("login", templateVars);
-});
-
-app.post("/login", (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
-  const templateVars = {
-    shortURL,
-    longURL: urlDatabase[shortURL],
-    username: users[req.cookies["user_id"]],
-  };
-  res.render("/login", templateVars);
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -179,7 +172,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-//Edits/ Updates an existing short URL
+//Edits/ Updates an existing short URL//refactor variables
 app.post("/urls/:shortURL", (req, res) => {
   // console.log("short", req.params.shortURL);
   // console.log("url", req.body.longURL);
@@ -192,6 +185,7 @@ app.post("/urls/:shortURL", (req, res) => {
   res.redirect("/urls"); // redirect to main
 });
 
+//refactor variables
 app.get("/urls/:shortURL", (req, res) => {
   // console.log("params", req.params);
   // console.log("body", req.body);
@@ -199,7 +193,7 @@ app.get("/urls/:shortURL", (req, res) => {
 
   const hasCookie = users[req.cookies["user_id"]]
   if (!hasCookie) {
-    res.status(403).send("Please log in");
+    res.redirect("/login")
     return;
   }
 
@@ -225,11 +219,13 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+
+//refactor variables
 app.get("/urls", (req, res) => {
   
   const hasCookie = users[req.cookies["user_id"]]
   if (!hasCookie) {
-    res.status(403).send("Please log in");
+    res.redirect("/login")
     return;
   }
 
