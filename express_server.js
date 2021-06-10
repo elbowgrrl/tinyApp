@@ -12,30 +12,28 @@ app.use(morgan("dev"));
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
+const bcrypt = require("bcrypt");
+
 app.set("view engine", "ejs");
 
 const urlDatabase = {
-  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "userRandomID" },
-  i3BoGr: { longURL: "https://www.google.ca", userID: "userRandomID" },
-  g6NyFw: { longURL: "http://www.cbc.ca", userID: "userhascookie"}
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: 'bf9c9e' },
+  i3BoGr: { longURL: "https://www.google.ca", userID: 'bf9c9e' },
+  g6NyFw: { longURL: "http://www.cbc.ca", userID: '31egii'}
 };
 
 const users = {
-  userRandomID: {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "1234",
+  bf9c9e: {
+    id: 'bf9c9e',
+    email: 'user@example.com',
+    hashedPassword: '$2b$10$HidsfNRDXYg1XLmtRfAuW.QR6OSjRRB.Ole263VbM8VVZwCY61FKe'
   },
-  user2RandomID: {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: "dishwasher-funk",
-  },
-  userhascookie: {
-    id: "userhascookie",
-    email: "a@a.com",
-    password: "1234"
+  '31egii': {
+    id: '31egii',
+    email: 'a@a.com',
+    hashedPassword: '$2b$10$ZNx02XDsCMVIfL7HbsHV8umC3WjenVOz5I0.kK5rbMBZ4rOuY.gNa'
   }
+
 };
 
 
@@ -71,14 +69,20 @@ app.post("/login", (req, res) => {
   // console.log("password", password);
   const email = req.body.email;
   const password = req.body.password;
+
+  console.log(users);
+
   userID = getUserByemail(email);
 
   if (!userID) {
-    res.status(403).send("Please enter valid login info");
+    return res.status(403).send("Please enter valid login info");
   }
 
-  if (userID.password !== password) {
-    res.status(403).send("Please enter valid login info");
+  if (userID) {
+    const checkPassword = bcrypt.compareSync(password, userID.hashedPassword);
+    if (!checkPassword) {
+      return res.status(403).send("Please enter valid login info");
+    }
   }
 
   res.cookie("user_id", userID.id);
@@ -94,14 +98,14 @@ app.post("/urls/logout", (req, res) => {
 app.get("/urls/new", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = users[req.cookies["user_id"]];
+  const longURL = urlDatabase[shortURL]
   const templateVars = {
     shortURL,
-    longURL: urlDatabase[shortURL],
+    longURL,
     userID,
   };
   //Only allow logged in users to create new urls
-  const hasCookie = users[req.cookies["user_id"]]
-  if (!hasCookie) {
+  if (!userID) {
     res.status(403).redirect("/login");
     return;
   }
@@ -125,9 +129,10 @@ app.get("/register", (req, res) => {
   // const username = req.body.Username;
   const shortURL = req.params.shortURL;
   const userID = users[req.cookies["user_id"]];
+  const longURL = urlDatabase[shortURL]
   const templateVars = {
     shortURL,
-    longURL: urlDatabase[shortURL],
+    longURL,
     userID,
   };
   res.render("register", templateVars);
@@ -140,6 +145,7 @@ app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const id = generateRandomString();
+  const hashedPassword = bcrypt.hashSync(password, 10);
 
   if (!email || !password) {
     res.status(400).send("Must enter an email and password");
@@ -151,7 +157,7 @@ app.post("/register", (req, res) => {
     return;
   }
 
-  const user = { id, email, password };
+  const user = { id, email, hashedPassword };
   users[id] = user;
   res.cookie("user_id", id);
   console.log(users);
@@ -191,6 +197,7 @@ app.post("/urls/:shortURL", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = users[req.cookies["user_id"]];
+  const longURL = urlDatabase[shortURL].longURL;
   // console.log("params", req.params);
   // console.log("body", req.body);
   // console.log("data", urlDatabase)
@@ -203,7 +210,7 @@ app.get("/urls/:shortURL", (req, res) => {
   urls = urlsForUser(users[req.cookies["user_id"]].id)
   const templateVars = {
     shortURL,
-    longURL: urls[shortURL].longURL,
+    longURL,
     userID,
   };
   res.render("urls_show", templateVars);
