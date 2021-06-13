@@ -171,16 +171,9 @@ app.get("/urls/:shortURL", (req, res) => {
     return res.status(403).send("You must be logged in to view that page");
   }
   
-  const userID = users[req.session.user_id];
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL].longURL;
   const shortURLs = Object.keys(urlDatabase);
   let counter = 0;
-  const templateVars = {
-    shortURL,
-    longURL,
-    userID,
-  };
 
   //checks to see if short url exists in in-memory database
   for (const shorturl of shortURLs) {
@@ -191,6 +184,14 @@ app.get("/urls/:shortURL", (req, res) => {
   if (counter < 1) {
     res.status(404).send("the page you have requested does not exist");
   }
+
+  const userID = users[req.session.user_id];
+  const longURL = urlDatabase[shortURL].longURL;
+  const templateVars = {
+    shortURL,
+    longURL,
+    userID,
+  };
 
   //prevents users from viewing urls that do not belong to them
   if (urlDatabase[shortURL].userID !== req.session.user_id) {
