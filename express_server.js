@@ -1,26 +1,17 @@
+//Dependacies
 const express = require("express");
-const app = express();
-const PORT = 8080; // default port 8080
-
 const bcrypt = require("bcrypt");
+const cookieSession = require("cookie-session");
 const morgan = require("morgan");
+
+const PORT = 8080;
+
+const app = express();
+
 app.use(morgan("dev"));
 app.set("view engine", "ejs");
-
-app.use(
-  express.urlencoded({
-    extended: true,
-  })
-);
-
-const cookieSession = require("cookie-session");
-app.use(
-  cookieSession({
-    name: "wumplepuff",
-    keys: ["key1"],
-  })
-);
-
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieSession({ name: "wumplepuff", keys: ["key1"] }));
 
 //Test URLs for test users
 const urlDatabase = {
@@ -52,35 +43,46 @@ const generateRandomString = function (length = 6) {
 
 const { getUserByemail, urlsForUser } = require("./helper_function");
 
-
 //Endpoints
 
+//Allows a registered user to log in. Also displays registration button in header.
+app.get("/login", (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+  const userID = users[req.session.user_id];
+  const templateVars = { userID };
+  res.render("login", templateVars);
+});
+
+//Checks user database for email of user//if exists checks password and logs in if correct
+//throws relevant errors OR sets cookie and redirects to protected area
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const userID = getUserByemail(email, users);
-  const hash = userID.hashedPassword;
 
   if (!userID) {
     return res.status(403).send("Please enter valid login info");
   }
 
-  if (userID) {
-    const checkPassword = bcrypt.compareSync(password, hash);
-    if (!checkPassword) {
-      return res.status(403).send("Please enter valid login info");
-    }
+  const checkPassword = bcrypt.compareSync(password, userID.hashedPassword);
+  if (!checkPassword) {
+    return res.status(403).send("Please enter valid login info");
   }
-
+  //sets a new cookie to indicate that user is logged in
   req.session.user_id = userID.id;
   res.redirect("/urls");
 });
 
+//clears cookies and redirects
 app.post("/urls/logout", (req, res) => {
+  //clears cookies to log user out
   req.session = null;
-  res.redirect("/urls");
+
+  res.redirect("/login");
 });
 
+//Allows logged in users to shorted a new url and save it under their userID in database
 app.get("/urls/new", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = users[req.session.user_id];
@@ -90,25 +92,29 @@ app.get("/urls/new", (req, res) => {
     longURL,
     userID,
   };
-  //Only allow logged in users to create new urls
+
   if (!userID) {
-    res.status(403).redirect("/login");
-    return;
+    return res.status(403).redirect("/login");
   }
+
   res.render("urls_new", templateVars);
 });
 
-app.post("/urls/new", (req, res) => {
+app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   const url = req.body.longURL;
   const userURL = {
     longURL: req.body.longURL,
     userID: users[req.session.user_id].id,
   };
+  
+  //adds a new short url to in-memory database
   urlDatabase[shortURL] = userURL;
+
   res.redirect("/urls");
 });
 
+//allows a new user to register with an e-mail and password. SAves to in-memory database
 app.get("/register", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = users[req.session.user_id];
@@ -118,6 +124,7 @@ app.get("/register", (req, res) => {
     longURL,
     userID,
   };
+
   res.render("register", templateVars);
 });
 
@@ -139,88 +146,121 @@ app.post("/register", (req, res) => {
 
   const user = { id, email, hashedPassword };
   users[id] = user;
+
+  //sets a cookie to indicate user is logged in
   req.session.user_id = user.id;
-  console.log(users);
+
   res.redirect("/urls");
 });
 
-app.get("/login", (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
-  const userID = users[req.session["user_id"]];
-  const templateVars = { userID };
-  res.render("login", templateVars);
-});
-
+//allows logged in users to delete saved short urls
 app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURL = req.params.shortURL;
+
+  //removes a short url from in-memory database
   delete urlDatabase[shortURL];
+
   res.redirect("/urls");
 });
 
-app.post("/urls/:shortURL", (req, res) => {
-  const shortURL = req.params.shortURL;
-  const url = req.body.longURL;
-  const userURL = {
-    longURL: req.body.longURL,
-    userID: users[req.session.user_id].id,
-  };
-  urlDatabase[shortURL] = userURL;
-  res.redirect("/urls"); 
-});
-
+//allows logged in users to view and edit the short urls associated with their userID
 app.get("/urls/:shortURL", (req, res) => {
-  const shortURL = req.params.shortURL;
-  const userID = users[req.session.user_id];
-  const longURL = urlDatabase[shortURL].longURL;
-  const isLoggedIn = users[req.session.user_id];
-  if (!isLoggedIn) {
-    res.redirect("/login");
-    return;
-  }
 
-  urls = urlsForUser(users[req.session.user_id].id, urlDatabase);
+  //checking if user has cookie and is therefore logged in
+  if (!req.session.user_id) {
+    return res.status(403).send("You must be logged in to view that page");
+  }
+  
+  const userID = users[req.session.user_id];
+  const shortURL = req.params.shortURL;
+  const longURL = urlDatabase[shortURL].longURL;
+  const shortURLs = Object.keys(urlDatabase);
+  let counter = 0;
   const templateVars = {
     shortURL,
     longURL,
     userID,
   };
+
+  //checks to see if short url exists in in-memory database
+  for (const shorturl of shortURLs) {
+    if (shortURL === shorturl) {
+      counter += 1;
+    }
+  }
+  if (counter < 1) {
+    res.status(404).send("the page you have requested does not exist");
+  }
+
+  //prevents users from viewing urls that do not belong to them
+  if (urlDatabase[shortURL].userID !== req.session.user_id) {
+    return res.status(404).send("Please log in to view this page");
+  }
+
   res.render("urls_show", templateVars);
 });
 
+app.post("/urls/:shortURL", (req, res) => {
+  const shortURL = req.params.shortURL;
+  const url = req.body.longURL;
+
+  const userURL = {
+    longURL: req.body.longURL,
+    userID: users[req.session.user_id].id,
+  };
+  //adds new short url to database
+  urlDatabase[shortURL] = userURL;
+
+  res.redirect("/urls");
+});
+
+//redirects from short url to long url
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const longURL = urlDatabase[shortURL].longURL;
+
   res.redirect(longURL);
 });
 
+//devs only
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+//Shows a logged in user the short urls associated with their userID
+//redirects non logged in user to log in
 app.get("/urls", (req, res) => {
-  const userID = users[req.session.user_id];
-  const isLoggedIn = users[req.session.user_id];
-  if (!isLoggedIn) {
-    res.redirect("/login");
-    return;
+
+  //checking if user has cookie and is therefore logged in
+  if (!req.session.user_id) {
+    return res.status(403).send("Please log in");
   }
 
-  urls = urlsForUser(users[req.session.user_id].id, urlDatabase);
-
+  //retrieves urls for a given user
+  const userID = users[req.session.user_id];
+  const urls = urlsForUser(users[req.session.user_id].id, urlDatabase);
   const templateVars = {
     urls,
     userID,
   };
+
   res.render("index_urls", templateVars);
 });
 
+//sends a greeting to a user, either logged in or not
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+//redirects a logged in user to urls
+//redirects a non logged in user to log in
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  //checking if user has cookie and is therefore logged in
+  if (!req.session.user_id) {
+    return res.redirect("/login");
+  }
+
+  res.redirect("/urls");
 });
 
 app.listen(PORT, () => {
