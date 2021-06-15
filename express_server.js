@@ -47,8 +47,6 @@ const { getUserByemail, urlsForUser } = require("./helper_function");
 
 //Allows a registered user to log in. Also displays registration button in header.
 app.get("/login", (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
   const userID = users[req.session.user_id];
   const templateVars = { userID };
   res.render("login", templateVars);
@@ -57,8 +55,7 @@ app.get("/login", (req, res) => {
 //Checks user database for email of user//if exists checks password and logs in if correct
 //throws relevant errors OR sets cookie and redirects to protected area
 app.post("/login", (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
+  const { email, password } = req.body;
   const userID = getUserByemail(email, users);
 
   if (!userID) {
@@ -74,15 +71,7 @@ app.post("/login", (req, res) => {
   res.redirect("/urls");
 });
 
-//clears cookies and redirects
-app.post("/urls/logout", (req, res) => {
-  //clears cookies to log user out
-  req.session = null;
-
-  res.redirect("/login");
-});
-
-//Allows logged in users to shorted a new url and save it under their userID in database
+//Allows logged in users to view the new short url page
 app.get("/urls/new", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = users[req.session.user_id];
@@ -100,18 +89,12 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
-app.post("/urls", (req, res) => {
-  const shortURL = generateRandomString();
-  const url = req.body.longURL;
-  const userURL = {
-    longURL: req.body.longURL,
-    userID: users[req.session.user_id].id,
-  };
-  
-  //adds a new short url to in-memory database
-  urlDatabase[shortURL] = userURL;
+//clears cookies and redirects
+app.post("/urls/logout", (req, res) => {
+  //clears cookies to log user out
+  req.session = null;
 
-  res.redirect("/urls");
+  res.redirect("/login");
 });
 
 //allows a new user to register with an e-mail and password. SAves to in-memory database
@@ -129,8 +112,7 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
+  const { email, password } = req.body;
   const id = generateRandomString();
   const hashedPassword = bcrypt.hashSync(password, 10);
 
@@ -149,12 +131,15 @@ app.post("/register", (req, res) => {
 
   //sets a cookie to indicate user is logged in
   req.session.user_id = user.id;
-
   res.redirect("/urls");
 });
 
 //allows logged in users to delete saved short urls
 app.post("/urls/:shortURL/delete", (req, res) => {
+  if (!req.session.user_id) {
+    return res.status(403).send("You must be logged in to view that page");
+  }
+
   const shortURL = req.params.shortURL;
 
   //removes a short url from in-memory database
@@ -165,23 +150,15 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //allows logged in users to view and edit the short urls associated with their userID
 app.get("/urls/:shortURL", (req, res) => {
-
   //checking if user has cookie and is therefore logged in
   if (!req.session.user_id) {
     return res.status(403).send("You must be logged in to view that page");
   }
-  
-  const shortURL = req.params.shortURL;
-  const shortURLs = Object.keys(urlDatabase);
-  let counter = 0;
 
   //checks to see if short url exists in in-memory database
-  for (const shorturl of shortURLs) {
-    if (shortURL === shorturl) {
-      counter += 1;
-    }
-  }
-  if (counter < 1) {
+  const shortURL = req.params.shortURL;
+
+  if (!urlDatabase[shortURL]) {
     res.status(404).send("the page you have requested does not exist");
   }
 
@@ -201,10 +178,9 @@ app.get("/urls/:shortURL", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+//Allows logged in users to create new short urls
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const url = req.body.longURL;
-
   const userURL = {
     longURL: req.body.longURL,
     userID: users[req.session.user_id].id,
@@ -231,7 +207,6 @@ app.get("/urls.json", (req, res) => {
 //Shows a logged in user the short urls associated with their userID
 //redirects non logged in user to log in
 app.get("/urls", (req, res) => {
-
   //checking if user has cookie and is therefore logged in
   if (!req.session.user_id) {
     return res.status(403).send("Please log in");
@@ -246,6 +221,20 @@ app.get("/urls", (req, res) => {
   };
 
   res.render("index_urls", templateVars);
+});
+
+//Allows logged in users to create
+app.post("/urls", (req, res) => {
+  const shortURL = generateRandomString();
+  const userURL = {
+    longURL: req.body.longURL,
+    userID: users[req.session.user_id].id,
+  };
+  console.log("post urls line 236");
+  //adds a new short url to in-memory database
+  urlDatabase[shortURL] = userURL;
+
+  res.redirect("/urls");
 });
 
 //sends a greeting to a user, either logged in or not
